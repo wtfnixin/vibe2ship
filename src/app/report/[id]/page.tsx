@@ -20,6 +20,8 @@ import {
   Calendar,
   Sparkles,
   FileCheck,
+  Eye,
+  Users,
 } from "lucide-react";
 
 interface DetailPageProps {
@@ -348,11 +350,12 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
               {/* Deep Vision Audits */}
               {report.visualAudits && report.visualAudits.length > 0 && (
                 <div className="border-t border-slate-100 pt-4 mb-4">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">AI Visual Audits Spotted</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2 font-medium">AI Visual Audits Spotted</span>
                   <div className="flex flex-wrap gap-2">
                     {report.visualAudits.map((audit: string, index: number) => (
-                      <span key={index} className="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded border border-slate-200">
-                        🔍 {audit}
+                      <span key={index} className="inline-flex items-center text-xs bg-slate-50 text-slate-700 px-2.5 py-1 rounded border border-slate-200 font-medium">
+                        <Eye className="h-3.5 w-3.5 text-slate-500 mr-1.5" />
+                        {audit}
                       </span>
                     ))}
                   </div>
@@ -362,11 +365,12 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
               {/* Affected Parties */}
               {report.impactedParties && report.impactedParties.length > 0 && (
                 <div className="border-t border-slate-100 pt-4 mb-4">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Threatened Demographics</span>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2 font-medium">Threatened Demographics</span>
                   <div className="flex flex-wrap gap-2">
                     {report.impactedParties.map((party: string, index: number) => (
-                      <span key={index} className="inline-flex items-center text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded border border-slate-200">
-                        ⚠️ {party}
+                      <span key={index} className="inline-flex items-center text-xs bg-slate-50 text-slate-700 px-2.5 py-1 rounded border border-slate-200 font-medium">
+                        <Users className="h-3.5 w-3.5 text-slate-500 mr-1.5" />
+                        {party}
                       </span>
                     ))}
                   </div>
