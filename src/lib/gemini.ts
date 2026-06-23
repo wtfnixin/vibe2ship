@@ -145,6 +145,7 @@ export async function analyzeAndDraftComplaint(
       model: MODEL_NAME,
       generationConfig: {
         responseMimeType: "application/json",
+        temperature: 0.1, // Forces deterministic, consistent classifications
       },
     });
 
