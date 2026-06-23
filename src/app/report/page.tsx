@@ -317,9 +317,8 @@ export default function ReportPage() {
                   <input
                     type="number"
                     step="any"
-                    readOnly
-                    {...register("latitude", { required: true, min: -90, max: 90 })}
-                    className="w-full border border-slate-200 rounded bg-slate-50 p-2.5 text-sm text-slate-600 focus:outline-none mt-1"
+                    {...register("latitude", { required: true, min: -90, max: 90, valueAsNumber: true })}
+                    className="w-full border border-slate-200 rounded bg-white p-2.5 text-sm text-slate-900 mt-1 focus:border-slate-400 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -327,12 +326,16 @@ export default function ReportPage() {
                   <input
                     type="number"
                     step="any"
-                    readOnly
-                    {...register("longitude", { required: true, min: -180, max: 180 })}
-                    className="w-full border border-slate-200 rounded bg-slate-50 p-2.5 text-sm text-slate-600 focus:outline-none mt-1"
+                    {...register("longitude", { required: true, min: -180, max: 180, valueAsNumber: true })}
+                    className="w-full border border-slate-200 rounded bg-white p-2.5 text-sm text-slate-900 mt-1 focus:border-slate-400 focus:outline-none"
                   />
                 </div>
               </div>
+
+              {/* Editable Coords Helper Tip */}
+              <p className="text-[11px] text-slate-500 mt-2.5 leading-relaxed">
+                Tip: Coordinates are auto-detected from your device GPS. If you are uploading a photo taken at a different location, you can manually type in the correct coordinates.
+              </p>
 
               {/* Status Message */}
               <div className="mt-4 flex items-center space-x-2 text-xs">
