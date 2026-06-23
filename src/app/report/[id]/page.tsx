@@ -119,7 +119,7 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
     document.body.removeChild(element);
   };
 
-  const updateStatus = async (newStatus: "Submitted" | "In Progress" | "Resolved") => {
+  const updateStatus = async (newStatus: "Submitted" | "In Progress" | "Resolved" | "Spam") => {
     if (!id || !report) return;
     setUpdatingStatus(true);
     try {
@@ -131,30 +131,28 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
       const snap = await getDoc(analyticsRef);
       if (snap.exists()) {
         const data = snap.data();
-        const openDiff = newStatus === "Resolved" ? -1 : 0;
-        const resolvedDiff = newStatus === "Resolved" ? 1 : 0;
-        // If transitioning from Resolved to something else
-        const prevResolved = report.status === "Resolved";
-        const nowResolved = newStatus === "Resolved";
+        const oldStatus = report.status;
         
         let newOpen = data.openIssues || 0;
         let newResolved = data.resolvedIssues || 0;
         let newInProgress = data.inProgressIssues || 0;
 
-        if (prevResolved && !nowResolved) {
-          newResolved = Math.max(0, newResolved - 1);
-          if (newStatus === "In Progress") newInProgress += 1;
-          else newOpen += 1;
-        } else if (!prevResolved && nowResolved) {
-          newResolved += 1;
-          if (report.status === "In Progress") newInProgress = Math.max(0, newInProgress - 1);
-          else newOpen = Math.max(0, newOpen - 1);
-        } else if (report.status === "Submitted" && newStatus === "In Progress") {
-          newInProgress += 1;
+        // Step 1: Remove from old status count
+        if (oldStatus === "Submitted") {
           newOpen = Math.max(0, newOpen - 1);
-        } else if (report.status === "In Progress" && newStatus === "Submitted") {
+        } else if (oldStatus === "In Progress") {
           newInProgress = Math.max(0, newInProgress - 1);
+        } else if (oldStatus === "Resolved") {
+          newResolved = Math.max(0, newResolved - 1);
+        }
+
+        // Step 2: Add to new status count
+        if (newStatus === "Submitted") {
           newOpen += 1;
+        } else if (newStatus === "In Progress") {
+          newInProgress += 1;
+        } else if (newStatus === "Resolved") {
+          newResolved += 1;
         }
 
         await updateDoc(analyticsRef, {
@@ -291,6 +289,8 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
                     ? "bg-blue-50 text-blue-800 border-blue-200"
                     : report.status === "In Progress"
                     ? "bg-yellow-50 text-yellow-800 border-yellow-200"
+                    : report.status === "Spam"
+                    ? "bg-red-50 text-red-800 border-red-200 font-semibold"
                     : "bg-green-50 text-green-800 border-green-200"
                 }`}>
                   {report.status}
@@ -515,16 +515,18 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
                   {/* Status Toggle buttons */}
                   <div>
                     <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-2">Complaint Status</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(["Submitted", "In Progress", "Resolved"] as const).map((status) => (
+                     <div className="grid grid-cols-4 gap-2">
+                      {(["Submitted", "In Progress", "Resolved", "Spam"] as const).map((status) => (
                         <button
                           key={status}
                           onClick={() => updateStatus(status)}
                           disabled={updatingStatus || report.status === status}
-                          className={`text-xs py-1.5 px-2 rounded border font-semibold text-center transition-all ${
+                          className={`text-xs py-1.5 px-1 rounded border font-semibold text-center transition-all ${
                             report.status === status
                               ? status === "Resolved"
                                 ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-900/30"
+                                : status === "Spam"
+                                ? "bg-red-650 bg-red-600 border-red-500 text-white shadow-sm shadow-red-900/30"
                                 : "bg-slate-800 border-slate-700 text-white"
                               : "bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-950/80"
                           }`}

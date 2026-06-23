@@ -64,7 +64,10 @@ export default function MapPage() {
       (snapshot) => {
         const list: any[] = [];
         snapshot.forEach((doc) => {
-          list.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          if (data.status !== "Spam") {
+            list.push({ id: doc.id, ...data });
+          }
         });
         setReports(list);
         setLoading(false);

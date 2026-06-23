@@ -9,7 +9,10 @@ export async function GET(req: NextRequest) {
     const reportsSnapshot = await getDocs(collection(db, "reports"));
     const reports: any[] = [];
     reportsSnapshot.forEach((doc) => {
-      reports.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      if (data.status !== "Spam") {
+        reports.push({ id: doc.id, ...data });
+      }
     });
 
     // Sort reports by date descending

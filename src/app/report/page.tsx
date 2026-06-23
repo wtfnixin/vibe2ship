@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/context/auth-context";
+import exifr from "exifr";
 import {
   UploadCloud,
   FileImage,
@@ -32,6 +33,7 @@ export default function ReportPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitStep, setSubmitStep] = useState<string>("");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [loadedFromPhoto, setLoadedFromPhoto] = useState(false);
 
   const {
     register,
@@ -67,6 +69,7 @@ export default function ReportPage() {
   const fetchCoordinates = () => {
     setGpsStatus("fetching");
     setGpsErrorMsg("");
+    setLoadedFromPhoto(false);
     
     if (!navigator.geolocation) {
       setGpsStatus("error");
@@ -105,6 +108,20 @@ export default function ReportPage() {
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
+      
+      // Auto-extract GPS data from photo EXIF
+      exifr.gps(file)
+        .then((gps) => {
+          if (gps && typeof gps.latitude === "number" && typeof gps.longitude === "number") {
+            setValue("latitude", gps.latitude);
+            setValue("longitude", gps.longitude);
+            setGpsStatus("success");
+            setLoadedFromPhoto(true);
+          }
+        })
+        .catch((err) => {
+          console.warn("No GPS metadata extracted from photo:", err);
+        });
       
       // Auto-compress image to speed up uploads and stay under Firestore document size limits
       const reader = new FileReader();
@@ -265,6 +282,7 @@ export default function ReportPage() {
                       onClick={() => {
                         setImageFile(null);
                         setImagePreview(null);
+                        setLoadedFromPhoto(false);
                       }}
                       className="text-xs font-semibold text-red-600 hover:text-red-800"
                     >
@@ -347,7 +365,9 @@ export default function ReportPage() {
                 )}
                 {gpsStatus === "success" && (
                   <span className="text-emerald-700 font-medium bg-emerald-50 border border-emerald-100 rounded px-2 py-0.5">
-                    GPS Coordinates Locked successfully
+                    {loadedFromPhoto 
+                      ? "GPS Geotag loaded from Photo metadata" 
+                      : "GPS Coordinates Locked successfully"}
                   </span>
                 )}
                 {gpsStatus === "error" && (
