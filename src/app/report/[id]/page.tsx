@@ -60,6 +60,7 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
   const [officialResponse, setOfficialResponse] = useState("");
   const [assignedAgency, setAssignedAgency] = useState("");
   const [updatingNotes, setUpdatingNotes] = useState(false);
+  const [isAdminView, setIsAdminView] = useState(true);
 
   // Sync state values with report data once loaded
   useEffect(() => {
@@ -236,7 +237,32 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
             <ArrowLeft className="h-4 w-4" />
             <span>Dashboard</span>
           </Link>
-          <div className="text-xs text-slate-500 flex items-center space-x-1">
+
+          {/* Demo View Mode Switcher */}
+          <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-350/20 max-w-fit mx-auto sm:mx-0">
+            <button
+              onClick={() => setIsAdminView(false)}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                !isAdminView
+                  ? "bg-white text-slate-950 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Citizen View
+            </button>
+            <button
+              onClick={() => setIsAdminView(true)}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                isAdminView
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Officer Console (Demo)
+            </button>
+          </div>
+
+          <div className="text-xs text-slate-500 flex items-center justify-center space-x-1">
             <Calendar className="h-3.5 w-3.5" />
             <span>Filed: {formatDate(report.createdAt)}</span>
           </div>
@@ -475,78 +501,80 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
           {/* Action Hub & Complaint Letter (Right) */}
           <div className="lg:col-span-2 space-y-6">
             {/* Municipal Control Console */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 text-white shadow-sm">
-              <h2 className="text-base font-bold text-white mb-2 flex items-center space-x-1.5">
-                <FileCheck className="h-4.5 w-4.5 text-slate-300" />
-                <span>Municipal Control Console</span>
-              </h2>
-              <p className="text-xs text-slate-400 mb-5 leading-relaxed">
-                Administrative simulator to triage, assign, and respond to this incident. Updates are live on citizen portals immediately.
-              </p>
-              
-              <div className="space-y-4">
-                {/* Status Toggle buttons */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-2">Complaint Status</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["Submitted", "In Progress", "Resolved"] as const).map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => updateStatus(status)}
-                        disabled={updatingStatus || report.status === status}
-                        className={`text-xs py-1.5 px-2 rounded border font-semibold text-center transition-all ${
-                          report.status === status
-                            ? status === "Resolved"
-                              ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-900/30"
-                              : "bg-slate-800 border-slate-700 text-white"
-                            : "bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-950/80"
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
+            {isAdminView && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 text-white shadow-sm">
+                <h2 className="text-base font-bold text-white mb-2 flex items-center space-x-1.5">
+                  <FileCheck className="h-4.5 w-4.5 text-slate-300" />
+                  <span>Municipal Control Console</span>
+                </h2>
+                <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+                  Administrative simulator to triage, assign, and respond to this incident. Updates are live on citizen portals immediately.
+                </p>
+                
+                <div className="space-y-4">
+                  {/* Status Toggle buttons */}
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-2">Complaint Status</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["Submitted", "In Progress", "Resolved"] as const).map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => updateStatus(status)}
+                          disabled={updatingStatus || report.status === status}
+                          className={`text-xs py-1.5 px-2 rounded border font-semibold text-center transition-all ${
+                            report.status === status
+                              ? status === "Resolved"
+                                ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-900/30"
+                                : "bg-slate-800 border-slate-700 text-white"
+                              : "bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-950/80"
+                          }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Assigned Agency Selector */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">Assign Dept/Agency</label>
-                  <select
-                    value={assignedAgency}
-                    onChange={(e) => setAssignedAgency(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-slate-600"
+                  {/* Assigned Agency Selector */}
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">Assign Dept/Agency</label>
+                    <select
+                      value={assignedAgency}
+                      onChange={(e) => setAssignedAgency(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-slate-600"
+                    >
+                      <option value="Public Works Department">Public Works Department</option>
+                      <option value="Sanitation & Waste Management">Sanitation & Waste Management</option>
+                      <option value="Water Supply & Sewerage Board">Water Supply & Sewerage Board</option>
+                      <option value="Municipal Electrical Division">Municipal Electrical Division</option>
+                      <option value="Parks & Forestry Dept">Parks & Forestry Dept</option>
+                      <option value="General Municipal Administration">General Municipal Administration</option>
+                    </select>
+                  </div>
+
+                  {/* Official Update Input */}
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">Official Response Note</label>
+                    <textarea
+                      value={officialResponse}
+                      onChange={(e) => setOfficialResponse(e.target.value)}
+                      placeholder="Enter official resolution notes, dispatch times, or updates for citizens..."
+                      rows={3}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 resize-none"
+                    />
+                  </div>
+
+                  {/* Submit Update button */}
+                  <button
+                    onClick={saveOfficialUpdate}
+                    disabled={updatingNotes || (report.officialResponse === officialResponse && report.assignedAgency === assignedAgency)}
+                    className="w-full bg-slate-100 hover:bg-white text-slate-950 text-xs font-bold py-2 rounded transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="Public Works Department">Public Works Department</option>
-                    <option value="Sanitation & Waste Management">Sanitation & Waste Management</option>
-                    <option value="Water Supply & Sewerage Board">Water Supply & Sewerage Board</option>
-                    <option value="Municipal Electrical Division">Municipal Electrical Division</option>
-                    <option value="Parks & Forestry Dept">Parks & Forestry Dept</option>
-                    <option value="General Municipal Administration">General Municipal Administration</option>
-                  </select>
+                    <span>{updatingNotes ? "Saving Update..." : "Publish Official Update"}</span>
+                  </button>
                 </div>
-
-                {/* Official Update Input */}
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">Official Response Note</label>
-                  <textarea
-                    value={officialResponse}
-                    onChange={(e) => setOfficialResponse(e.target.value)}
-                    placeholder="Enter official resolution notes, dispatch times, or updates for citizens..."
-                    rows={3}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 resize-none"
-                  />
-                </div>
-
-                {/* Submit Update button */}
-                <button
-                  onClick={saveOfficialUpdate}
-                  disabled={updatingNotes || (report.officialResponse === officialResponse && report.assignedAgency === assignedAgency)}
-                  className="w-full bg-slate-100 hover:bg-white text-slate-950 text-xs font-bold py-2 rounded transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span>{updatingNotes ? "Saving Update..." : "Publish Official Update"}</span>
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Complaint Draft Generator (Agent 3) */}
             <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
