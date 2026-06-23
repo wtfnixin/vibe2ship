@@ -28,6 +28,26 @@ interface DetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const getDefaultAgency = (category: string): string => {
+  switch (category) {
+    case "Pothole":
+    case "Road Damage":
+      return "Public Works Department";
+    case "Garbage":
+      return "Sanitation & Waste Management";
+    case "Water Leakage":
+      return "Water Supply & Sewerage Board";
+    case "Streetlight Damage":
+      return "Municipal Electrical Division";
+    case "Sewage Overflow":
+      return "Sanitation & Sewerage Board";
+    case "Fallen Tree":
+      return "Parks & Forestry Dept";
+    default:
+      return "General Municipal Administration";
+  }
+};
+
 export default function ReportDetailsPage({ params }: DetailPageProps) {
   const { id } = React.use(params);
   const { user, loading: authLoading } = useAuth();
@@ -37,6 +57,17 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [officialResponse, setOfficialResponse] = useState("");
+  const [assignedAgency, setAssignedAgency] = useState("");
+  const [updatingNotes, setUpdatingNotes] = useState(false);
+
+  // Sync state values with report data once loaded
+  useEffect(() => {
+    if (report) {
+      setOfficialResponse((prev) => prev || report.officialResponse || "");
+      setAssignedAgency((prev) => prev || report.assignedAgency || getDefaultAgency(report.category));
+    }
+  }, [report]);
 
   // Authenticate user
   useEffect(() => {
@@ -136,6 +167,23 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
       console.error("Failed to update status:", err);
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const saveOfficialUpdate = async () => {
+    if (!id || !report) return;
+    setUpdatingNotes(true);
+    try {
+      const docRef = doc(db, "reports", id);
+      await updateDoc(docRef, {
+        officialResponse,
+        assignedAgency,
+        lastUpdated: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Failed to save official update:", err);
+    } finally {
+      setUpdatingNotes(false);
     }
   };
 
@@ -384,6 +432,44 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
                 </div>
               </div>
             </div>
+
+            {/* Official Response Timeline Card */}
+            {(report.officialResponse || report.assignedAgency) && (
+              <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center space-x-2">
+                  <FileCheck className="h-4.5 w-4.5 text-emerald-600" />
+                  <span>Official Action & Communications</span>
+                </h2>
+                
+                <div className="relative border-l-2 border-slate-200 pl-4 space-y-4 ml-2">
+                  {report.assignedAgency && (
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1.5 bg-slate-900 h-2 w-2 rounded-full border border-white"></div>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Assigned Agency</span>
+                      <p className="text-sm font-semibold text-slate-800 mt-0.5">{report.assignedAgency}</p>
+                    </div>
+                  )}
+                  
+                  {report.officialResponse ? (
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1.5 bg-emerald-600 h-2 w-2 rounded-full border border-white"></div>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Latest Official Response</span>
+                      <p className="text-sm text-slate-600 leading-relaxed mt-1 whitespace-pre-wrap">
+                        {report.officialResponse}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <div className="absolute -left-[21px] top-1.5 bg-amber-500 h-2 w-2 rounded-full border border-white"></div>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Status Update</span>
+                      <p className="text-sm text-slate-600 leading-relaxed mt-1">
+                        Report state changed to <strong className="text-slate-850">"{report.status}"</strong>. Awaiting official response notes from dispatch.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Hub & Complaint Letter (Right) */}
@@ -394,43 +480,70 @@ export default function ReportDetailsPage({ params }: DetailPageProps) {
                 <FileCheck className="h-4.5 w-4.5 text-slate-300" />
                 <span>Municipal Control Console</span>
               </h2>
-              <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                Administrative simulator to update the complaint state. Changing this will trigger live updates across citizen portals immediately.
+              <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+                Administrative simulator to triage, assign, and respond to this incident. Updates are live on citizen portals immediately.
               </p>
               
-              <div className="space-y-2">
+              <div className="space-y-4">
+                {/* Status Toggle buttons */}
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-2">Complaint Status</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["Submitted", "In Progress", "Resolved"] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => updateStatus(status)}
+                        disabled={updatingStatus || report.status === status}
+                        className={`text-xs py-1.5 px-2 rounded border font-semibold text-center transition-all ${
+                          report.status === status
+                            ? status === "Resolved"
+                              ? "bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-900/30"
+                              : "bg-slate-800 border-slate-700 text-white"
+                            : "bg-slate-950/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-950/80"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Assigned Agency Selector */}
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">Assign Dept/Agency</label>
+                  <select
+                    value={assignedAgency}
+                    onChange={(e) => setAssignedAgency(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-slate-600"
+                  >
+                    <option value="Public Works Department">Public Works Department</option>
+                    <option value="Sanitation & Waste Management">Sanitation & Waste Management</option>
+                    <option value="Water Supply & Sewerage Board">Water Supply & Sewerage Board</option>
+                    <option value="Municipal Electrical Division">Municipal Electrical Division</option>
+                    <option value="Parks & Forestry Dept">Parks & Forestry Dept</option>
+                    <option value="General Municipal Administration">General Municipal Administration</option>
+                  </select>
+                </div>
+
+                {/* Official Update Input */}
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">Official Response Note</label>
+                  <textarea
+                    value={officialResponse}
+                    onChange={(e) => setOfficialResponse(e.target.value)}
+                    placeholder="Enter official resolution notes, dispatch times, or updates for citizens..."
+                    rows={3}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 resize-none"
+                  />
+                </div>
+
+                {/* Submit Update button */}
                 <button
-                  onClick={() => updateStatus("Submitted")}
-                  disabled={updatingStatus || report.status === "Submitted"}
-                  className={`w-full text-xs font-bold py-2 px-4 rounded border transition-colors ${
-                    report.status === "Submitted"
-                      ? "bg-slate-800 border-slate-700 text-slate-300 cursor-not-allowed"
-                      : "bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  }`}
+                  onClick={saveOfficialUpdate}
+                  disabled={updatingNotes || (report.officialResponse === officialResponse && report.assignedAgency === assignedAgency)}
+                  className="w-full bg-slate-100 hover:bg-white text-slate-950 text-xs font-bold py-2 rounded transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Mark as Submitted
-                </button>
-                <button
-                  onClick={() => updateStatus("In Progress")}
-                  disabled={updatingStatus || report.status === "In Progress"}
-                  className={`w-full text-xs font-bold py-2 px-4 rounded border transition-colors ${
-                    report.status === "In Progress"
-                      ? "bg-slate-800 border-slate-700 text-slate-300 cursor-not-allowed"
-                      : "bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  }`}
-                >
-                  Mark as In Progress
-                </button>
-                <button
-                  onClick={() => updateStatus("Resolved")}
-                  disabled={updatingStatus || report.status === "Resolved"}
-                  className={`w-full text-xs font-bold py-2 px-4 rounded border transition-colors ${
-                    report.status === "Resolved"
-                      ? "bg-slate-800 border-slate-700 text-slate-300 cursor-not-allowed"
-                      : "bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500"
-                  }`}
-                >
-                  Mark as Resolved
+                  <span>{updatingNotes ? "Saving Update..." : "Publish Official Update"}</span>
                 </button>
               </div>
             </div>
