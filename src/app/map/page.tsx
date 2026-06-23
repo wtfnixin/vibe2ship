@@ -20,6 +20,7 @@ declare global {
   interface Window {
     initMap: () => void;
     google: any;
+    L: any;
   }
 }
 
@@ -39,6 +40,7 @@ export default function MapPage() {
 
   const mapRef = useRef<HTMLDivElement | null>(null);
   const googleMapInstance = useRef<any>(null);
+  const leafletMapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
 
   const isGoogleMapsConfigured =
@@ -101,26 +103,60 @@ export default function MapPage() {
     setFilteredReports(result);
   }, [reports, categoryFilter, severityFilter, searchTerm]);
 
-  // Initialize Google Map if key exists
+  // Initialize Map (Google Maps or Leaflet)
   useEffect(() => {
-    if (loading || !isGoogleMapsConfigured || !filteredReports.length) return;
+    if (loading || !filteredReports.length) return;
 
-    // Load Google script if not already loaded
-    if (!window.google) {
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initGoogleMap;
-      document.head.appendChild(script);
+    if (isGoogleMapsConfigured) {
+      // Load Google script if not already loaded
+      if (!window.google) {
+        const script = document.createElement("script");
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+        script.async = true;
+        script.defer = true;
+        script.onload = initGoogleMap;
+        document.head.appendChild(script);
+      } else {
+        initGoogleMap();
+      }
     } else {
-      initGoogleMap();
+      // Load Leaflet CDN Assets dynamically
+      const loadLeaflet = () => {
+        // Add leaflet css
+        if (!document.getElementById("leaflet-css")) {
+          const link = document.createElement("link");
+          link.id = "leaflet-css";
+          link.rel = "stylesheet";
+          link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+          document.head.appendChild(link);
+        }
+
+        // Add leaflet script
+        if (!window.L) {
+          const script = document.createElement("script");
+          script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+          script.async = true;
+          script.onload = initLeafletMap;
+          document.head.appendChild(script);
+        } else {
+          initLeafletMap();
+        }
+      };
+
+      loadLeaflet();
     }
 
     return () => {
-      // Clean up markers
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
+      // Clean up Google markers
+      if (googleMapInstance.current) {
+        markersRef.current.forEach((m) => m.setMap(null));
+        markersRef.current = [];
+      }
+      // Clean up Leaflet map
+      if (leafletMapInstance.current) {
+        leafletMapInstance.current.remove();
+        leafletMapInstance.current = null;
+      }
     };
   }, [loading, filteredReports, isGoogleMapsConfigured]);
 
@@ -205,6 +241,71 @@ export default function MapPage() {
       });
 
       markersRef.current.push(marker);
+    });
+  };
+
+  const initLeafletMap = () => {
+    if (!mapRef.current || !window.L) return;
+
+    if (leafletMapInstance.current) {
+      leafletMapInstance.current.remove();
+      leafletMapInstance.current = null;
+    }
+
+    let center: [number, number] = [20.5937, 78.9629];
+    if (filteredReports.length > 0) {
+      const sumLat = filteredReports.reduce((sum, r) => sum + r.latitude, 0);
+      const sumLng = filteredReports.reduce((sum, r) => sum + r.longitude, 0);
+      center = [sumLat / filteredReports.length, sumLng / filteredReports.length];
+    }
+
+    const map = window.L.map(mapRef.current).setView(center, filteredReports.length > 1 ? 12 : 14);
+    leafletMapInstance.current = map;
+
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    filteredReports.forEach((report) => {
+      const markerColor =
+        report.severity === "Critical"
+          ? "#ef4444"
+          : report.severity === "High"
+          ? "#f97316"
+          : report.severity === "Medium"
+          ? "#f59e0b"
+          : "#10b981";
+
+      const icon = window.L.divIcon({
+        className: "custom-leaflet-pin",
+        html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.4); transform: translate(-3px, -3px);"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+      });
+
+      const marker = window.L.marker([report.latitude, report.longitude], { icon }).addTo(map);
+
+      marker.bindPopup(`
+        <div style="font-family: sans-serif; padding: 4px; min-width: 150px;">
+          <span style="font-size: 9px; font-weight: bold; background: #e2e8f0; padding: 2px 5px; border-radius: 3px; color: #475569;">
+            ${report.category}
+          </span>
+          <h4 style="margin: 5px 0 2px 0; font-size: 13px; font-weight: bold; color: #0f172a;">
+            ${report.address.split(",")[0]}
+          </h4>
+          <p style="margin: 0 0 6px 0; font-size: 10px; color: #64748b;">
+            Severity: ${report.severity}
+          </p>
+          <a href="/report/${report.id}" style="font-size: 11px; font-weight: 600; color: #0f172a; text-decoration: underline;">
+            View Details
+          </a>
+        </div>
+      `);
+
+      marker.on("click", () => {
+        setSelectedReport(report);
+      });
     });
   };
 
@@ -323,13 +424,18 @@ export default function MapPage() {
                 key={report.id}
                 onClick={() => {
                   setSelectedReport(report);
-                  // Focus google maps center if active
+                  // Focus maps center if active
                   if (googleMapInstance.current) {
                     googleMapInstance.current.setCenter({
                       lat: report.latitude,
                       lng: report.longitude,
                     });
                     googleMapInstance.current.setZoom(15);
+                  } else if (leafletMapInstance.current) {
+                    leafletMapInstance.current.setView(
+                      [report.latitude, report.longitude],
+                      15
+                    );
                   }
                 }}
                 className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors border-l-4 ${
@@ -367,121 +473,56 @@ export default function MapPage() {
 
       {/* Main Map View - Right */}
       <div className="flex-1 relative bg-slate-200 flex flex-col justify-end">
-        {isGoogleMapsConfigured ? (
-          // Google Map Container
-          <div ref={mapRef} className="w-full h-full min-h-[350px] lg:min-h-0" />
-        ) : (
-          // Vector Fallback Map Grid
-          <div className="w-full h-full min-h-[350px] lg:min-h-0 bg-slate-950 flex flex-col relative overflow-hidden select-none">
-            {/* Cyberpunk Grid Overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.95),rgba(15,23,42,0.95)),linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:100%_100%,40px_40px,40px_40px] opacity-40"></div>
+        {/* Unified Map Element */}
+        <div ref={mapRef} className="w-full h-full min-h-[350px] lg:min-h-0 z-0" />
 
-            {/* Coordinates HUD */}
-            <div className="absolute top-4 left-4 bg-slate-900/90 border border-slate-700/50 rounded p-3 text-[10px] font-mono text-slate-400 z-10 space-y-1">
-              <div className="text-emerald-500 font-bold uppercase">
-                Mock Mapping Overlay Mode
-              </div>
-              <div>Google Maps Key: Missing/Default</div>
-              <div>Grid Center: 20.5937 N, 78.9629 E</div>
-              <div>Active Nodes: {filteredReports.length}</div>
+        {/* Floating Info Indicator when Leaflet is active */}
+        {!isGoogleMapsConfigured && (
+          <div className="absolute top-4 left-4 bg-white/95 border border-slate-200 rounded px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm z-10 flex items-center space-x-1.5 backdrop-blur-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>OSM Leaflet Engine (Keyless)</span>
+          </div>
+        )}
+
+        {/* Selected Leaflet / Google Maps Report Card (shown overlay) */}
+        {selectedReport && (
+          <div className="absolute bottom-6 left-6 right-6 lg:left-auto lg:right-6 bg-white border border-slate-200 rounded-lg p-5 max-w-sm text-slate-900 shadow-2xl z-20 animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded font-bold text-slate-700">
+                {selectedReport.category}
+              </span>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-xs"
+              >
+                ✕
+              </button>
             </div>
-
-            {/* Simulated Grid Elements */}
-            <div className="flex-1 flex items-center justify-center relative p-8">
-              {filteredReports.map((report) => {
-                // Map Latitude/Longitude loosely to viewport percentages
-                // Formula: map coordinates relative to India boundaries roughly
-                // Lat India: 8 to 37. Lng India: 68 to 97.
-                const latMin = 8,
-                  latMax = 37,
-                  lngMin = 68,
-                  lngMax = 97;
-                
-                // Normalizing percentages
-                let xPercent =
-                  ((report.longitude - lngMin) / (lngMax - lngMin)) * 100;
-                let yPercent =
-                  100 - ((report.latitude - latMin) / (latMax - latMin)) * 100;
-
-                // Restrict boundaries to viewport 10% to 90%
-                xPercent = Math.max(10, Math.min(90, xPercent));
-                yPercent = Math.max(10, Math.min(90, yPercent));
-
-                const colorClass =
-                  report.severity === "Critical"
-                    ? "bg-red-600 ring-red-400"
-                    : report.severity === "High"
-                    ? "bg-orange-500 ring-orange-300"
-                    : report.severity === "Medium"
-                    ? "bg-amber-500 ring-amber-300"
-                    : "bg-emerald-500 ring-emerald-300";
-
-                const isSelected = selectedReport?.id === report.id;
-
-                return (
-                  <button
-                    key={report.id}
-                    onClick={() => setSelectedReport(report)}
-                    style={{ left: `${xPercent}%`, top: `${yPercent}%` }}
-                    className={`absolute p-1 rounded-full border border-white flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "scale-150 z-30 ring-4"
-                        : "hover:scale-125 z-20 ring-2"
-                    }`}
-                  >
-                    <span
-                      className={`h-3 w-3 rounded-full flex ${
-                        colorClass.split(" ")[0]
-                      }`}
-                    ></span>
-                  </button>
-                );
-              })}
-
-              {filteredReports.length === 0 && (
-                <div className="text-center text-slate-500 font-mono text-sm z-10">
-                  NO ACTIVE COORDINATES MATCHING CURRENT FILTER
-                </div>
-              )}
+            <h3 className="text-sm font-bold mt-3 text-slate-900">
+              {selectedReport.address.split(",")[0]}
+            </h3>
+            <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+              {selectedReport.description}
+            </p>
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                selectedReport.severity === "Critical"
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : selectedReport.severity === "High"
+                  ? "bg-orange-50 text-orange-700 border-orange-200"
+                  : selectedReport.severity === "Medium"
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              }`}>
+                {selectedReport.severity} Severity
+              </span>
+              <Link
+                href={`/report/${selectedReport.id}`}
+                className="bg-slate-950 hover:bg-slate-800 text-white font-semibold px-3 py-1.5 rounded text-xs transition-colors"
+              >
+                View Details
+              </Link>
             </div>
-
-            {/* Selection Popup - fallback map HUD */}
-            {selectedReport && (
-              <div className="absolute bottom-6 left-6 right-6 lg:left-auto lg:right-6 bg-slate-900 border border-slate-700/50 rounded-lg p-5 max-w-sm text-white shadow-2xl z-20 animate-in slide-in-from-bottom duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded font-mono font-semibold text-slate-300">
-                    {selectedReport.category}
-                  </span>
-                  <button
-                    onClick={() => setSelectedReport(null)}
-                    className="text-slate-400 hover:text-white font-mono text-xs"
-                  >
-                    CLOSE
-                  </button>
-                </div>
-                <h3 className="text-sm font-bold mt-3 text-white">
-                  {selectedReport.address.split(",")[0]}
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                  {selectedReport.description}
-                </p>
-                <div className="grid grid-cols-2 gap-4 mt-4 border-t border-slate-800 pt-3 text-[10px] font-mono text-slate-500">
-                  <div>LAT: {selectedReport.latitude.toFixed(4)}</div>
-                  <div>LNG: {selectedReport.longitude.toFixed(4)}</div>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs text-slate-300 font-semibold">
-                    Status: {selectedReport.status}
-                  </span>
-                  <Link
-                    href={`/report/${selectedReport.id}`}
-                    className="bg-white hover:bg-slate-100 text-slate-900 font-semibold px-3 py-1.5 rounded text-xs transition-colors"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
