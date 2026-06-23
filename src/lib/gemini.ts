@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Initialize Gemini SDK safely
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const MODEL_NAME = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL_NAME = process.env.NEXT_PUBLIC_GEMINI_MODEL || "gemini-3.5-flash";
 
 // Utility to parse JSON safely from LLM output
 function parseJsonFromText(text: string): any {
@@ -177,7 +177,7 @@ Return a JSON object matching this schema:
   "visualAudits": ["clue 1", "clue 2"],
   "impactedParties": ["group 1", "group 2"],
   "reasoning": "Detailed visual analysis and risk assessment reasoning",
-  "complaint": "Full text of the complaint letter, formatted with appropriate newlines."
+  "complaint": "Full text of the complaint letter. Keep it highly concise, formal, and direct, maximum 120 words."
 }
 `;
 
