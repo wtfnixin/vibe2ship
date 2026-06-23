@@ -182,6 +182,13 @@ Return a JSON object matching this schema:
 }
 `;
 
+    console.log("----------------------------------------------------------------");
+    console.log("[AGENT EXECUTION LOG: VISION TRIAGE COMPLAINT PIPELINE]");
+    console.log("[Agent 1: Classification Agent] Running issue categorization...");
+    console.log("[Agent 2: Severity Analysis Agent] Evaluating severity and risk scores...");
+    console.log("[Agent 3: Complaint Generator Agent] Drafting municipality-ready complaint letter...");
+    console.log("----------------------------------------------------------------");
+
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();
     return parseJsonFromText(responseText) as CombinedAnalysisResult;
@@ -308,6 +315,11 @@ Return a JSON object matching this schema:
   "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
 }
 `;
+
+    console.log("----------------------------------------------------------------");
+    console.log("[AGENT EXECUTION LOG: CIVIC INTELLIGENCE ANALYTICS]");
+    console.log("[Agent 4: Insight Agent] Analyzing aggregated reports to compile urban policy trends & recommendations...");
+    console.log("----------------------------------------------------------------");
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
