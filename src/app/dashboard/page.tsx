@@ -206,13 +206,13 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
                 {/* Column 1: Summary */}
-                <div className="lg:col-span-1 border-r border-slate-100 pr-6">
+                <div className="lg:col-span-1 lg:border-r border-b lg:border-b-0 border-slate-100 pb-6 lg:pb-0 lg:pr-6">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Macro Analysis Summary</h3>
                   <p className="text-sm text-slate-600 leading-relaxed">{insights.summary || "No complaints reported yet. AI insights will update once issues are logged."}</p>
                 </div>
 
                 {/* Column 2: Hotspots */}
-                <div className="lg:col-span-1 border-r border-slate-100 px-6">
+                <div className="lg:col-span-1 lg:border-r border-b lg:border-b-0 border-slate-100 pb-6 lg:pb-0 lg:px-6">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Identified Density & Hotspots</h3>
                   {insights.hotspots && insights.hotspots.length > 0 ? (
                     <ul className="space-y-2">
@@ -229,7 +229,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Column 3: Recommendations */}
-                <div className="lg:col-span-1 pl-6">
+                <div className="lg:col-span-1 lg:pl-6">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Municipal Recommendations</h3>
                   {insights.recommendations && insights.recommendations.length > 0 ? (
                     <ul className="space-y-2">

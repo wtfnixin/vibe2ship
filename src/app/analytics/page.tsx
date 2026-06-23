@@ -233,8 +233,8 @@ export default function AnalyticsPage() {
               <AlertTriangle className="h-4 w-4 text-slate-600" />
               <span>Triage Severity Distribution</span>
             </h2>
-            <div className="flex flex-col md:flex-row items-center justify-around h-64">
-              <div className="w-full md:w-1/2 h-full">
+            <div className="flex flex-col md:flex-row items-center justify-around min-h-[16rem] md:h-64 h-auto py-6 md:py-0 gap-6">
+              <div className="w-full md:w-1/2 h-64 md:h-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
